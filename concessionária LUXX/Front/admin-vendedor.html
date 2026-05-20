@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LUXX Vendas - Consultor</title>
+        <!-- Scripts da página: controle de carregamento e interação com API -->
+<script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: slideUp 0.3s ease-out; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-gray-50 flex">
+    <!-- Página: Painel do vendedor para consultar leads e enviar propostas. -->
+
+
+    <!-- Menu Vendedor -->
+    <aside class="w-72 bg-slate-900 min-h-screen text-white p-6 sticky top-0 h-screen shadow-2xl">
+        <div class="mb-10 px-2">
+            <h2 class="font-black text-2xl tracking-tighter">LUXX <span class="text-green-500">VENDAS</span></h2>
+            <div class="flex items-center gap-2 mt-2">
+                <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                <p id="vendedor-nome" class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Painel do Consultor</p>
+            </div>
+        </div>
+        
+        <nav class="space-y-3">
+            <button onclick="showTab('testdrive')" id="btn-testdrive" class="w-full flex items-center gap-3 p-4 bg-green-600 rounded-xl transition-all text-left font-bold shadow-lg shadow-green-900/20">
+                <i class="fas fa-key"></i> Test-Drives
+            </button>
+            <button onclick="showTab('revisao')" id="btn-revisao" class="w-full flex items-center gap-3 p-4 hover:bg-slate-800 rounded-xl transition-all text-slate-400 hover:text-white text-left font-medium">
+                <i class="fas fa-tools"></i> Pós-Venda
+            </button>
+            
+            <div class="pt-10 border-t border-slate-800 mt-10">
+                <button onclick="logout()" class="flex items-center gap-3 p-4 text-red-400 hover:bg-red-950/30 rounded-xl transition-all font-medium w-full text-left">
+                    <i class="fas fa-power-off"></i> Sair
+                </button>
+            </div>
+        </nav>
+    </aside>
+
+    <main class="flex-1 p-10">
+        
+        <!-- Aba: Test-Drives -->    <!-- Seção tab-testdrive: área principal da página -->
+
+        <section id="tab-testdrive" class="tab-content active">
+            <header class="mb-10">
+                <h1 class="text-4xl font-black text-slate-800 tracking-tight">Agenda do Dia</h1>
+                <p class="text-slate-500 mt-1">Clientes confirmados para avaliação de veículos.</p>
+            </header>
+            
+            <div id="grid-testdrive" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <p class="text-slate-400">Carregando test-drives do banco de dados...</p>
+            </div>
+        </section>
+
+
+        <!-- Aba: Revisões -->    <!-- Seção tab-revisao: área principal da página -->
+
+        <section id="tab-revisao" class="tab-content">
+            <header class="mb-10">
+                <h1 class="text-4xl font-black text-slate-800 tracking-tight">Fluxo de Oficina</h1>
+                <p class="text-slate-500 mt-1">Gestão de pós-venda e revisões periódicas.</p>
+            </header>
+            
+            <div id="grid-revisao" class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <p class="text-slate-400">Carregando revisões do banco de dados...</p>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // Função auxiliar para buscar dados da API
+        const fetchData = async (url, label = 'DADOS') => {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    console.error(`[FALHA] ${label}: status ${response.status}`);
+                    return [];
+                }
+                const data = await response.json();
+                console.log(`[SUCESSO] ${label}:`, data.length, 'registros');
+                return data;
+            } catch (error) {
+                console.error(`[FALHA] ${label}:`, error);
+                return [];
+            }
+        };
+
+        // Verifica se o vendedor está logado
+        function verificarLogin() {
+            const userType = localStorage.getItem('userType');
+            const email = localStorage.getItem('email');
+            const vendedorId = localStorage.getItem('vendedorId');
+
+            if (userType !== 'vendedor' || !email || !vendedorId) {
+                alert('Acesso negado. Faça login novamente.');
+                window.location.href = 'login.html';
+                return false;
+            }
+            return true;
+        }
+
+        // Função para formatar data
+        const formataData = (valor) => {
+            if (!valor) return 'Data não disponível';
+            const date = new Date(valor);
+            return isNaN(date) ? valor : date.toLocaleDateString('pt-BR');
+        };
+
+        // Carrega Test-Drives do vendedor logado
+        async function carregarTestDrives() {
+            const vendedorId = localStorage.getItem('vendedorId');
+            const container = document.getElementById('grid-testdrive');
+            container.innerHTML = '<p class="text-slate-400">Carregando test-drives...</p>';
+
+            try {
+                const [testDrives, clientes, veiculos] = await Promise.all([
+                    fetchData('http://localhost:5107/api/testdrive', 'TEST-DRIVES'),
+                    fetchData('http://localhost:5107/api/clientes', 'CLIENTES'),
+                    fetchData('http://localhost:5107/api/veiculos', 'VEÍCULOS')
+                ]);
+
+                // Mapeia clientes e veículos por ID
+                const clientesMapa = {};
+                clientes.forEach(c => {
+                    const id = c.Id_cliente || c.id_cliente || c.id || c.Id;
+                    clientesMapa[id] = c.Nome_completo || c.nome_completo || 'Cliente desconhecido';
+                });
+
+                const veiculosMapa = {};
+                veiculos.forEach(v => {
+                    const id = v.Id_veiculo || v.id_veiculo || v.Id || v.id;
+                    const marca = v.Marca || v.marca || '';
+                    const modelo = v.Modelo || v.modelo || '';
+                    const ano = v.Ano || v.ano || '';
+                    veiculosMapa[id] = [marca, modelo, ano].filter(Boolean).join(' ');
+                });
+
+                // Filtra apenas test-drives deste vendedor
+                const meuTestDrive = testDrives.filter(t => {
+                    const tdVendedorId = t.Id_vendedor || t.id_vendedor || t.id || t.Id;
+                    return parseInt(tdVendedorId) === parseInt(vendedorId);
+                });
+
+                if (meuTestDrive.length === 0) {
+                    container.innerHTML = '<p class="text-slate-500">Nenhum test-drive agendado.</p>';
+                } else {
+                    container.innerHTML = meuTestDrive.map(td => {
+                        const nomeCliente = clientesMapa[td.Id_cliente || td.id_cliente || td.id || td.Id] || 'Cliente';
+                        const nomeVeiculo = veiculosMapa[td.Id_veiculo || td.id_veiculo || td.id || td.Id] || 'Veículo';
+                        const data = formataData(td.Data_testdrive || td.data_testdrive || td.data);
+                        const status = td.Status || td.status || 'Confirmado';
+                        return `
+                            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                                <div class="space-y-4">
+                                    <div>
+                                        <p class="text-xs uppercase font-bold text-slate-400">Cliente</p>
+                                        <p class="text-lg font-bold text-slate-800">${nomeCliente}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs uppercase font-bold text-slate-400">Veículo</p>
+                                        <p class="text-lg font-bold text-slate-800">${nomeVeiculo}</p>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-4 pt-4 border-t">
+                                        <div>
+                                            <p class="text-xs uppercase font-bold text-slate-400">Data</p>
+                                            <p class="text-sm font-bold text-slate-800">${data}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs uppercase font-bold text-slate-400">Status</p>
+                                            <p class="text-sm font-bold text-green-600">${status}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            } catch (error) {
+                console.error('Erro ao carregar test-drives:', error);
+                container.innerHTML = '<p class="text-red-500">Erro ao carregar dados.</p>';
+            }
+        }
+
+        // Carrega Pós-Venda (Revisões) do vendedor logado
+        async function carregarPosVenda() {
+            const vendedorId = localStorage.getItem('vendedorId');
+            const container = document.getElementById('grid-revisao');
+            container.innerHTML = '<p class="text-slate-400">Carregando pós-venda...</p>';
+
+            try {
+                const [revisoes, clientes, veiculos, vendas] = await Promise.all([
+                    fetchData('http://localhost:5107/api/revisoes', 'REVISÕES'),
+                    fetchData('http://localhost:5107/api/clientes', 'CLIENTES'),
+                    fetchData('http://localhost:5107/api/veiculos', 'VEÍCULOS'),
+                    fetchData('http://localhost:5107/api/vendas', 'VENDAS')
+                ]);
+
+                // Mapeia clientes e veículos
+                const clientesMapa = {};
+                clientes.forEach(c => {
+                    const id = c.Id_cliente || c.id_cliente || c.id || c.Id;
+                    clientesMapa[id] = c.Nome_completo || c.nome_completo || 'Cliente desconhecido';
+                });
+
+                const veiculosMapa = {};
+                veiculos.forEach(v => {
+                    const id = v.Id_veiculo || v.id_veiculo || v.Id || v.id;
+                    const marca = v.Marca || v.marca || '';
+                    const modelo = v.Modelo || v.modelo || '';
+                    veiculosMapa[id] = [marca, modelo].filter(Boolean).join(' ');
+                });
+
+                // Encontra clientes com vendas deste vendedor
+                const clientesDoVendedor = vendas
+                    .filter(v => {
+                        const vVendedorId = v.id_vendedor || v.Id_vendedor || v.id || v.Id;
+                        return parseInt(vVendedorId) === parseInt(vendedorId);
+                    })
+                    .map(v => v.id_cliente || v.Id_cliente || v.id || v.Id);
+
+                // Filtra revisões apenas dos clientes que compraram deste vendedor
+                const minhasRevisoes = revisoes.filter(r => {
+                    const rClienteId = r.id_cliente || r.Id_cliente || r.id || r.Id;
+                    return clientesDoVendedor.includes(rClienteId);
+                });
+
+                if (minhasRevisoes.length === 0) {
+                    container.innerHTML = '<p class="text-slate-500">Nenhuma revisão agendada para seus clientes.</p>';
+                } else {
+                    container.innerHTML = minhasRevisoes.map(r => {
+                        const nomeCliente = clientesMapa[r.id_cliente || r.Id_cliente || r.id || r.Id] || 'Cliente';
+                        const nomeVeiculo = veiculosMapa[r.Id_veiculo || r.id_veiculo || r.Id || r.id] || 'Veículo';
+                        const data = formataData(r.data_revisao || r.Data_revisao || r.data);
+                        const servico = r.servico || r.Servico || 'Não informado';
+                        const status = r.status || r.Status || 'Agendado';
+                        return `
+                            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                                <div class="space-y-3">
+                                    <div>
+                                        <p class="text-xs uppercase font-bold text-slate-400">Cliente</p>
+                                        <p class="text-lg font-bold text-slate-800">${nomeCliente}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs uppercase font-bold text-slate-400">Veículo</p>
+                                        <p class="text-sm font-bold text-slate-800">${nomeVeiculo}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs uppercase font-bold text-slate-400">Serviço</p>
+                                        <p class="text-sm font-bold text-slate-800">${servico}</p>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-4 pt-4 border-t">
+                                        <div>
+                                            <p class="text-xs uppercase font-bold text-slate-400">Data</p>
+                                            <p class="text-sm font-bold text-slate-800">${data}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs uppercase font-bold text-slate-400">Status</p>
+                                            <p class="text-sm font-bold text-blue-600">${status}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            } catch (error) {
+                console.error('Erro ao carregar pós-venda:', error);
+                container.innerHTML = '<p class="text-red-500">Erro ao carregar dados.</p>';
+            }
+        }
+
+        // Controla abas
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.getElementById('tab-' + tabName).classList.add('active');
+            
+            const btns = ['testdrive', 'revisao'];
+            btns.forEach(btn => {
+                const el = document.getElementById('btn-' + btn);
+                if(btn === tabName) {
+                    el.className = `w-full flex items-center gap-3 p-4 ${btn === 'testdrive' ? 'bg-green-600' : 'bg-slate-700'} rounded-xl transition-all text-left font-bold shadow-lg text-white`;
+                } else {
+                    el.className = "w-full flex items-center gap-3 p-4 hover:bg-slate-800 rounded-xl transition-all text-slate-400 hover:text-white text-left font-medium";
+                }
+            });
+
+            // Carrega dados quando troca de aba
+            if (tabName === 'testdrive') carregarTestDrives();
+            if (tabName === 'revisao') carregarPosVenda();
+        }
+
+        // Função para fazer logout
+        function logout() {
+            localStorage.removeItem('userType');
+            localStorage.removeItem('email');
+            localStorage.removeItem('vendedorId');
+            localStorage.removeItem('vendedorNome');
+            alert('Logout realizado com sucesso!');
+            window.location.href = 'login.html';
+        }
+
+        // Ao carregar a página, verifica login e carrega test-drives
+        document.addEventListener('DOMContentLoaded', () => {
+            if (verificarLogin()) {
+                const vendedorNome = localStorage.getItem('vendedorNome');
+                document.getElementById('vendedor-nome').innerText = `Bem-vindo, ${vendedorNome || 'Vendedor'}`;
+                carregarTestDrives();
+            }
+        });
+    </script>
+</body>
+</html>

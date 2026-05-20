@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Administrativo - LUXX MOTORS</title>
+        <!-- Scripts da página: controle de carregamento e interação com API -->
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 min-h-screen flex items-center justify-center">
+    <!-- Página: Página de login do usuário para acessar o sistema. -->
+
+
+    <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-md">
+        <div class="text-center mb-8">
+            <h1 class="text-2xl font-bold text-slate-800">Acesso Restrito</h1>
+            <p class="text-gray-500 italic">Funcionários LUXX Motors</p>
+        </div>
+
+        <form id="loginForm" class="space-y-6">
+            <div>
+                <label class="block text-sm font-bold text-gray-700">E-mail Funcional</label>
+                <input type="email" id="email" required class="w-full p-3 border rounded-md focus:ring-2 focus:ring-slate-800 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-gray-700">Senha</label>
+                <input type="password" id="password" required class="w-full p-3 border rounded-md focus:ring-2 focus:ring-slate-800 outline-none">
+            </div>
+
+            <button type="submit" class="w-full bg-slate-800 text-white py-3 rounded-md font-bold hover:bg-slate-950 transition-all">
+                Entrar no Sistema
+            </button>
+        </form>
+        
+        <p class="text-center mt-6 text-xs text-gray-400">Acesso monitorado pela gerência de TI.</p>
+    </div>
+
+    <script>
+        // Função auxiliar para buscar dados da API
+        const fetchData = async (url) => {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) return null;
+                return await response.json();
+            } catch (error) {
+                console.error('Erro ao buscar:', error);
+                return null;
+            }
+        };
+
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const emailDigitado = document.getElementById('email').value.trim().toLowerCase();
+            const passwordDigitada = document.getElementById('password').value;
+
+            console.log(`[LOGIN] Tentativa com: ${emailDigitado}`);
+
+            // 1. Credenciais hardcoded para gerente
+            if (emailDigitado === 'admin@luxx.com' && passwordDigitada === '123') {
+                console.log('Gerente autenticado com sucesso!');
+                alert('Bem-vindo, Gerente!');
+                localStorage.setItem('userType', 'gerente');
+                localStorage.setItem('email', emailDigitado);
+                window.location.href = 'admin-gerente.html';
+                return;
+            }
+
+            console.log('Buscando vendedor no endpoint de credenciais...');
+
+            // CORREÇÃO DA ROTA: Aponta diretamente para o método ListarCredenciais do C#
+            const credenciais = await fetchData('http://localhost:5107/api/vendedores/credenciais');
+
+            let vendedorLogado = null;
+
+            if (credenciais && credenciais.length > 0) {
+                console.log(`Credenciais carregadas: ${credenciais.length}`, credenciais);
+
+                for (const c of credenciais) {
+                    // O .NET por padrão envia o JSON com a primeira letra minúscula (camelCase)
+                    const emailBanco = (c.email || '').toString().trim().toLowerCase();
+                    const senhaBanco = (c.senha_valida || '123').toString().trim();
+
+                    if (emailBanco === emailDigitado && senhaBanco === passwordDigitada) {
+                        vendedorLogado = c;
+                        break;
+                    }
+                }
+            }
+
+            if (vendedorLogado) {
+                // Mapeia os campos vindos do endpoint /api/vendedores/credenciais
+                const nome = vendedorLogado.nome || 'Consultor Luxx';
+                const emailSalvo = (vendedorLogado.email || '').toString().trim();
+                const idVal = vendedorLogado.id || '';
+
+                console.log(`Vendedor ${nome} autenticado com sucesso! (ID: ${idVal})`);
+                alert(`Bem-vindo, ${nome}!`);
+
+                // Salva na sessão do navegador para o admin-vendedor.html usar
+                localStorage.setItem('userType', 'vendedor');
+                localStorage.setItem('email', emailSalvo);
+                localStorage.setItem('vendedorId', idVal);
+                localStorage.setItem('vendedorNome', nome);
+
+                window.location.href = 'admin-vendedor.html';
+            } else {
+                console.log('Nenhum vendedor encontrado com essas credenciais');
+                alert('E-mail ou senha incorretos. Tente novamente.');
+            }
+        });
+    </script>
+</body>
+</html>

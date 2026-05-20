@@ -1,0 +1,32 @@
+﻿<Properties StartupConfiguration="{F63698CA-F698-4EE0-BA42-5197D0C7EF57}|https">
+  <MonoDevelop.Ide.DebuggingService.PinnedWatches />
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
+  <MonoDevelop.Ide.ItemProperties.LuxxMotorsAPI PreferredExecutionTarget="/System/Volumes/Preboot/Cryptexes/App/System/Applications/Safari.app" />
+  <MonoDevelop.Ide.Workbench>
+    <Files>
+      <File FileName="Controllers/ClientesController.cs" Line="1" Column="1" />
+      <File FileName="Controllers/TestDriveController.cs" Line="1" Column="1" />
+      <File FileName="Controllers/VeiculosController.cs" Line="1" Column="1" />
+    </Files>
+    <Pads>
+      <Pad Id="ProjectPad">
+        <State name="__root__">
+          <Node name="LuxxMotorsAPI" expanded="True">
+            <Node name="LuxxMotorsAPI" expanded="True">
+              <Node name="ConnectedServicesFolder" selected="True" />
+              <Node name="Controllers" expanded="True" />
+              <Node name="Models" expanded="True">
+                <Node name="Data" expanded="True" />
+              </Node>
+              <Node name="Properties" expanded="True" />
+            </Node>
+          </Node>
+        </State>
+      </Pad>
+    </Pads>
+  </MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.DebuggingService.Breakpoints>
+    <BreakpointStore />
+  </MonoDevelop.Ide.DebuggingService.Breakpoints>
+  <MultiItemStartupConfigurations />
+</Properties>
